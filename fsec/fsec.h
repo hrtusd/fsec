@@ -5,7 +5,7 @@ namespace fsec
 	/// <summary>
 	/// Bit range
 	/// </summary>
-	static int R = 4;
+	static int R = 5;
 	/// <summary>
 	/// Max state (2^R)
 	/// </summary>
@@ -37,7 +37,7 @@ namespace fsec
 	};
 
 	/// <summary>
-	/// Simple file bite I/O
+	/// Simple file bit I/O
 	/// </summary>
 	struct bitstream
 	{
@@ -82,6 +82,14 @@ namespace fsec
 
 			for (int i = 0; i < fsec::L; i++)
 			{
+				const char* c1 = reinterpret_cast<const char *>(&(decoding_table[i].symbol));
+				auto s1 = sizeof((decoding_table[i].symbol));
+				const char* c2 = reinterpret_cast<const char *>(&(decoding_table[i].nb_bits));
+				auto s2 = sizeof((decoding_table[i].nb_bits));
+				const char* c3 = reinterpret_cast<const char *>(&(decoding_table[i].next_state));
+				auto s3 = sizeof((decoding_table[i].next_state));
+
+
 				file.write(reinterpret_cast<const char *>(&(decoding_table[i].symbol)), sizeof((decoding_table[i].symbol)));
 				file.write(reinterpret_cast<const char *>(&(decoding_table[i].nb_bits)), sizeof((decoding_table[i].nb_bits)));
 				file.write(reinterpret_cast<const char *>(&(decoding_table[i].next_state)), sizeof((decoding_table[i].next_state)));

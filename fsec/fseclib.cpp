@@ -40,15 +40,11 @@ namespace fsec
 		printf_s("read\n");
 		char s;
 
-		ifs.read((char*)&s, sizeof(char));
+		//ifs.read((char*)&s, sizeof(char));
+
 		while (ifs.read((char*)&s, sizeof(char))/*!ifs.eof()*/)
 		{
-			
-
-			//freqs[ifs.get()]++;
-			
-			
-
+			//freqs[ifs.get()]++;			
 			freqs[s]++;
 			true_sum++;
 		}

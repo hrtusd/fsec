@@ -72,6 +72,10 @@ void fsec_decode(std::string filename) {
 
 	fsec::decoding_entry* decoding_table;
 
+
+	// temp
+	filename = filename + ".anst";
+
 	fsec::bitstream bs;
 	bs.in2(&filename[0u], sum, state, decoding_table);
 
@@ -84,7 +88,7 @@ void fsec_decode(std::string filename) {
 	}
 
 	std::ofstream ofs;
-	ofs.open("testout.txt", std::ios::out | std::ios::trunc);
+	ofs.open(filename + "decode.txt", std::ios::out | std::ios::trunc);
 
 	for (int i = 0; i < sum; i++)
 	{
@@ -154,7 +158,7 @@ void fsec_decode_mem(std::string filename) {
 	bs.in2(&filename[0u], sum, state, decoding_table);
 
 	std::ofstream ofs;
-	ofs.open("testout", std::ios::out | std::ios::trunc);
+	ofs.open(filename + "decode.txt", std::ios::out | std::ios::trunc);
 
 	for (int i = 0; i < sum; i++)
 	{
@@ -238,8 +242,6 @@ int main(int argc, char** argv)
 	//test();
 
 	//return 0;
-	
-	_ASSERT(argc == 2);
 
 	#if _DEBUG
 		argc = 2;
@@ -249,7 +251,7 @@ int main(int argc, char** argv)
 	int mode = -1;
 	if (argc == 2) {
 		#if _DEBUG
-			filename = "tt.txt.anst";
+			filename = "tt.txt";
 		#else
 			filename = argv[1];
 		#endif // DEBUG
@@ -267,6 +269,14 @@ int main(int argc, char** argv)
 		printf_s("No file input.\n");
 		return 0;
 	}
+
+	printf_s("Encoding....\n");
+	fsec_encode(filename);
+
+	printf_s("Decoding....\n");
+	fsec_decode(filename);
+
+	return 0;
 
 	switch (mode)
 	{
