@@ -35,23 +35,24 @@ namespace fsec
 		int size = symbol_count;
 		unsigned long long true_sum = 0ULL;
 
-		std::ifstream ifs;
+		std::fstream ifs;
 		ifs.open(filename, std::ios::in);
 		printf_s("read\n");
-		char s;
+		unsigned char s;
 
-		//ifs.read((char*)&s, sizeof(char));
-
-		while (ifs.read((char*)&s, sizeof(char))/*!ifs.eof()*/)
+		while (ifs.read((char*)&s, sizeof(char)))
 		{
-			//freqs[ifs.get()]++;			
 			freqs[s]++;
-			true_sum++;
+			//true_sum++;
 		}
 
-		ifs.seekg(1, std::ios::end);
-		//true_sum = ifs.tellg();
-		//printf_s("tellg %d\n", true_sum);
+		//printf_s("truesum %d\n", true_sum);
+
+		ifs.close();
+
+		std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
+		true_sum = in.tellg();
+		in.close();
 
 		// reduce total size from 256
 		while (freqs[size - 1] == 0 && size > 0)
@@ -78,7 +79,7 @@ namespace fsec
 			else
 			{
 				// scale every symbol count
-				int f = round(scale * freqs[i]);
+				int f = (int)round(scale * freqs[i]);
 				normalized[i] = (f > 0) ? f : 1;
 				sum += normalized[i];
 			}
@@ -113,7 +114,7 @@ namespace fsec
 		int* symbol = new int[L];
 
 		int idx = 0;
-		int step = 5.0 / 8 * L + 3;
+		int step = (int)(5.0 / 8 * L + 3);
 
 		for (int i = 0; i < symbol_count; i++)
 		{
@@ -144,7 +145,7 @@ namespace fsec
 			decoding_table[X].symbol = symbol_spread[X];
 			int x = next[decoding_table[X].symbol]++;
 			decoding_table[X].next_state = x;
-			decoding_table[X].nb_bits = R - floor(log2(x));
+			decoding_table[X].nb_bits = (int)(R - floor(log2(x)));
 		}
 
 		return decoding_table;
@@ -156,11 +157,8 @@ namespace fsec
 
 		for (int i = 0; i < symbol_count; i++)
 		{
-			auto div = freqs[i];
-			auto divided = (double)L / freqs[i];
-			auto log = log2l((double)L / freqs[i]);
-			auto fl = floor(log2l((double)L / freqs[i]));
-			if (div == 0) fl = 1;
+			int fl = (int)floor(log2l((double)L / freqs[i]));
+			if (freqs[i] == 0) fl = 1;
 
 			symbol_table[i].nb = fl;
 			symbol_table[i].k = (freqs[i] + freqs[i]) << symbol_table[i].nb;

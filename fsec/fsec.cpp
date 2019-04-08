@@ -23,7 +23,7 @@ void fsec_encode(std::string filename) {
 		printf_s("%d: %d\n", i, norm[i]);
 	}*/
 
-	int* spread = fsec::spread(norm);
+	//int* spread = fsec::spread(norm);
 
 	int* encoding_table = fsec::build_encoding_table(norm);
 	fsec::decoding_entry* decoding_table = fsec::build_decoding_table(norm);
@@ -41,7 +41,7 @@ void fsec_encode(std::string filename) {
 	std::ifstream ifs;
 	ifs.open(filename, std::ios::in);
 	ifs.seekg(-1, std::ios::end);
-	for (int i = sum; i > 0; i--)
+	for (unsigned long long i = sum; i > 0; i--)
 	{
 		fsec::encode(ifs.get(), state, bs);
 
@@ -270,6 +270,7 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
+	#if _DEBUG
 	printf_s("Encoding....\n");
 	fsec_encode(filename);
 
@@ -277,6 +278,7 @@ int main(int argc, char** argv)
 	fsec_decode(filename);
 
 	return 0;
+	#endif // DEBUG
 
 	switch (mode)
 	{
