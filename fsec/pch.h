@@ -8,6 +8,8 @@
 #include <cstdio>
 #include <ctime>
 #include <string>
+#include <chrono>
 #include "fsec.h"
+#include "timer.h"
 
 #endif //PCH_H

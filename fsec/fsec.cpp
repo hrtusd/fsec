@@ -28,7 +28,7 @@ void fsec_encode(std::string filename) {
 	int* encoding_table = fsec::build_encoding_table(norm);
 	fsec::decoding_entry* decoding_table = fsec::build_decoding_table(norm);
 
-	fsec::print_tables();
+	//fsec::print_tables();
 
 	int state = fsec::L;
 
@@ -39,7 +39,7 @@ void fsec_encode(std::string filename) {
 
 
 	std::ifstream ifs;
-	ifs.open(filename, std::ios::in);
+	ifs.open(filename, std::ios::in | std::ios::binary);
 	ifs.seekg(-1, std::ios::end);
 	for (unsigned long long i = sum; i > 0; i--)
 	{
@@ -79,16 +79,16 @@ void fsec_decode(std::string filename) {
 	fsec::bitstream bs;
 	bs.in2(&filename[0u], sum, state, decoding_table);
 
-	for (int i = 0; i < fsec::L; i++)
-	{
-		printf_s(" index: %d\t symbol: %d\t nbBits: %d\t nextState: %d\n", i,
-			decoding_table[i].symbol,
-			decoding_table[i].nb_bits,
-			decoding_table[i].next_state);
-	}
+	//for (int i = 0; i < fsec::L; i++)
+	//{
+	//	printf_s(" index: %d\t symbol: %d\t nbBits: %d\t nextState: %d\n", i,
+	//		decoding_table[i].symbol,
+	//		decoding_table[i].nb_bits,
+	//		decoding_table[i].next_state);
+	//}
 
 	std::ofstream ofs;
-	ofs.open(filename + "decode.txt", std::ios::out | std::ios::trunc);
+	ofs.open(filename + "decode.txt", std::ios::out | std::ios::binary | std::ios::trunc);
 
 	for (int i = 0; i < sum; i++)
 	{
@@ -121,7 +121,7 @@ void fsec_encode_mem(std::string filename) {
 
 
 	std::ifstream ifs;
-	ifs.open(filename, std::ios::in);
+	ifs.open(filename, std::ios::in | std::ios::binary);
 	ifs.seekg(-1, std::ios::end);
 	for (int i = sum; i > 0; i--)
 	{
@@ -166,77 +166,6 @@ void fsec_decode_mem(std::string filename) {
 	}
 }
 
-void test() {
-	int inpSize = 5;
-	int* input = new int[inpSize];
-
-	for (int i = 0; i < inpSize; i++)
-	{
-		input[i] = rand() % 255;
-	}
-
-	int* freqs = new int[256];
-	memset(freqs, 0, 256);
-
-	int sum = fsec::count(input, inpSize, freqs);
-	int* norm = fsec::normalize(freqs, sum);
-
-
-	int* spread = fsec::spread(norm);
-
-	int* encoding_table = fsec::build_encoding_table(norm);
-	fsec::decoding_entry* decoding_table = fsec::build_decoding_table(norm);
-
-	fsec::print_tables();
-
-	return;
-
-	int state = fsec::L;
-	unsigned char* comp = new unsigned char[50];
-	unsigned char* comp_start = comp;
-
-	/*bit_output bout;
-	bout.start(comp_start);
-
-	int bout_final_bits;
-	unsigned char* bout_final_ptr;
-
-
-	int state_bits = 11;
-
-	for (int i = inpSize - 1; i > -1; i--)
-	{
-		fsec::encode(input[i], state, bout);
-	}
-
-	bout.put(state, state_bits);
-
-	bout_final_bits = bout.flush();
-	bout_final_ptr = bout.ptr;
-
-
-	bit_input bin;
-	bin.start(bout_final_ptr, bout_final_bits);
-
-	printf_s("\n");
-
-	state = bin.get(state_bits);
-
-	int* decoded = new int[inpSize];
-
-	for (int i = 0; i < inpSize; i++)
-	{
-		decoded[i] = fsec::decode(bin, state);
-		if (decoded[i] != input[i])
-		{
-			printf_s("err\n");
-			return;
-		}
-	}*/
-
-	printf_s("done..\n");
-}
-
 int main(int argc, char** argv)
 {
 	//test();
@@ -251,7 +180,7 @@ int main(int argc, char** argv)
 	int mode = -1;
 	if (argc == 2) {
 		#if _DEBUG
-			filename = "tt.txt";
+			filename = "plrabn12.txt";
 		#else
 			filename = argv[1];
 		#endif // DEBUG
@@ -270,12 +199,24 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	#if _DEBUG
-	printf_s("Encoding....\n");
-	fsec_encode(filename);
+	fsec::TimeMeasure* t = new fsec::TimeMeasure;
 
-	printf_s("Decoding....\n");
+	#if _DEBUG
+	
+	t->Start();
+	printf_s("\nEncoding....\n");
+	fsec_encode(filename);
+	t->End();
+	t->Print();
+
+	t->Start();
+	printf_s("\nDecoding....\n");
 	fsec_decode(filename);
+	t->End();
+	t->Print();
+	
+
+	printf_s("\nDone....\n");
 
 	return 0;
 	#endif // DEBUG
@@ -286,16 +227,34 @@ int main(int argc, char** argv)
 		return 0;
 		break;
 	case 0:
-		printf_s("Decoding....\n");
+		printf_s("\nDecoding....\n");
+
+		t->Start();
+
 		fsec_decode(filename);
+
+		t->End();
+		t->Print();
+
+		printf_s("\nDone....\n");
 		break;
 	case 1:
-		printf_s("Encoding....\n");
+		printf_s("\nEncoding....\n");
+
+		t->Start();
+
 		fsec_encode(filename);
+
+		t->End();
+		t->Print();
+
+		printf_s("\nDone....\n");
 		break;
 	default:
 		break;
 	}
+
+	delete t;
 
 	return 0;
 }

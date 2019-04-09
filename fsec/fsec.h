@@ -1,11 +1,12 @@
-#pragma once
+#ifndef FSEC_H
+#define FSEC_H
 
 namespace fsec
 {
 	/// <summary>
 	/// Bit range
 	/// </summary>
-	static int R = 10;
+	static int R = 9;
 	/// <summary>
 	/// Max state (2^R)
 	/// </summary>
@@ -48,7 +49,8 @@ namespace fsec
 		void out(char* filename) {
 			buffer = 0;
 			bitcount = 0;
-			file.open(filename, std::ios::in | std::ios::out | std::ios::trunc);
+			//file.open(filename, std::ios::in | std::ios::out | std::ios::trunc);
+			file.open(filename, std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
 		}
 
 		void write(unsigned int val, int nb)
@@ -60,7 +62,7 @@ namespace fsec
 			{
 				unsigned char tmp;
 				tmp = (unsigned char)(buffer >> (bitcount - 8));
-				printf_s("write %d\n ", tmp);
+				//printf_s("write %d\n ", tmp);
 				file.put(tmp);
 				bitcount -= 8;
 			}
@@ -106,7 +108,7 @@ namespace fsec
 		}
 
 		void in2(char* filename, unsigned int &sum, int &state, fsec::decoding_entry* &decoding_table) {
-			file.open(filename, std::ios::in);
+			file.open(filename, std::ios::in | std::ios::binary);
 
 			int len;
 			file.seekg(-12, std::ios::end);
@@ -114,7 +116,7 @@ namespace fsec
 			file.read((char*)&sum, sizeof(unsigned int));
 			file.read((char*)&len, sizeof(unsigned int));
 
-			int offset = 0 - 15 - len * 3 * sizeof(unsigned int);
+			int offset = 0 - 14 - len * 3 * sizeof(unsigned int);
 			file.seekg(offset, std::ios::end);
 			//file.seekg(0, std::ios::beg);
 
@@ -152,7 +154,7 @@ namespace fsec
 			while (bitcount < nb_bits)
 			{
 				unsigned char r = file.get();
-				printf_s("read %d\n", r);
+				//printf_s("read %d\n", r);
 
 				std::streampos pos = file.tellg();
 				pos -= 2;
@@ -193,3 +195,5 @@ namespace fsec
 
 	void print_tables();
 }
+
+#endif //FSEC_H

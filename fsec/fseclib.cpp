@@ -7,43 +7,19 @@ namespace fsec
 	decoding_entry* decoding_table;
 	int* symbol_spread;
 
-	int count(int* input, int input_len, int* &freqs)
-	{
-		int size = symbol_count;
-		//freqs = new int[size];
-		int true_sum = 0;
-
-		// count symbol frequenices
-		for (int i = 0; i < input_len; i++)
-		{
-			freqs[input[i]]++;
-			true_sum++;
-		}
-
-		// reduce total size from 256
-		while (freqs[size - 1] == 0 && size > 0)
-		{
-			size--;
-		}
-
-		symbol_count = size;
-		return true_sum;
-	}
-
 	unsigned long long countf(char* filename, int* &freqs)
 	{
 		int size = symbol_count;
 		unsigned long long true_sum = 0ULL;
 
 		std::fstream ifs;
-		ifs.open(filename, std::ios::in);
+		ifs.open(filename, std::ios::in | std::ios::binary);
 		printf_s("read\n");
 		unsigned char s;
 
 		while (ifs.read((char*)&s, sizeof(char)))
 		{
 			freqs[s]++;
-			//true_sum++;
 		}
 
 		//printf_s("truesum %d\n", true_sum);
@@ -238,7 +214,7 @@ namespace fsec
 		new_state <<= nb_bits;
 		new_state |= shift;
 
-		printf_s("symbol: %d\t state: %d -> %d\t bits: %d\t nb: %d\n", (int)de.symbol, state, new_state, shift, nb_bits);
+		//printf_s("symbol: %d\t state: %d -> %d\t bits: %d\t nb: %d\n", (int)de.symbol, state, new_state, shift, nb_bits);
 
 		state = new_state;
 
@@ -259,7 +235,7 @@ namespace fsec
 		int shift = (state >> nb_bits);
 		int new_state = encoding_table[start + shift];
 
-		printf_s("symbol: %d\t state: %d -> %d\t bits: %d\t nb: %d\n", symbol, state, new_state, tmp, nb_bits);
+		//printf_s("symbol: %d\t state: %d -> %d\t bits: %d\t nb: %d\n", symbol, state, new_state, tmp, nb_bits);
 
 		state = new_state;
 	}
