@@ -4,7 +4,7 @@
 namespace fsec
 {
 	typedef std::chrono::high_resolution_clock::time_point TimePoint;
-	typedef std::chrono::duration<std::chrono::milliseconds> Duration;
+	typedef std::chrono::duration<std::chrono::microseconds> Duration;
 	typedef std::chrono::high_resolution_clock HighResolutionClock;
 
 	class TimeMeasure
@@ -30,7 +30,7 @@ namespace fsec
 
 	void TimeMeasure::Print()
 	{
-		std::cout << "Time elapsed: " << std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count() << " ms" << std::endl;
+		std::cout << "Time elapsed: " << std::chrono::duration_cast<std::chrono::microseconds>(end - start).count() << " ms" << std::endl;
 	}
 }
 #endif /*TIME_MEASURE_H*/

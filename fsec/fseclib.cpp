@@ -12,23 +12,51 @@ namespace fsec
 		int size = symbol_count;
 		unsigned long long true_sum = 0ULL;
 
-		std::fstream ifs;
-		ifs.open(filename, std::ios::in | std::ios::binary);
 		printf_s("read\n");
-		unsigned char s;
+		
+		fsec::TimeMeasure* t = new fsec::TimeMeasure;
+		t->Start();
 
-		while (ifs.read((char*)&s, sizeof(char)))
+		std::fstream ifs;
+		ifs.open(filename, std::ios::in | std::ios::binary | std::ios::ate);
+		true_sum = ifs.tellg();
+		ifs.seekg(0, std::ios::beg);
+
+		int blockSize = 1 << 12;
+		std::vector<unsigned char> buffer(blockSize);
+		int pos = 0;
+
+		while (pos < true_sum)
 		{
-			freqs[s]++;
+			if (pos + blockSize > true_sum) {
+				blockSize = true_sum - pos;
+				buffer.resize(blockSize);
+			}
+
+			t->Start();
+
+			ifs.read(reinterpret_cast<char *>(&buffer[0]), blockSize);
+
+			t->End();
+			t->Print();
+
+			t->Start();
+
+			for (int i = 0; i < blockSize; i++)
+			{
+				freqs[buffer[i]]++;
+			}
+
+			t->End();
+			t->Print();
+
+			pos += blockSize;
 		}
 
-		//printf_s("truesum %d\n", true_sum);
+		t->End();
+		t->Print();
 
-		ifs.close();
-
-		std::ifstream in(filename, std::ifstream::ate | std::ifstream::binary);
-		true_sum = in.tellg();
-		in.close();
+		ifs.close();		
 
 		// reduce total size from 256
 		while (freqs[size - 1] == 0 && size > 0)

@@ -39,20 +39,39 @@ void fsec_encode(std::string filename) {
 
 
 	std::ifstream ifs;
-	ifs.open(filename, std::ios::in | std::ios::binary);
-	ifs.seekg(-1, std::ios::end);
-	for (unsigned long long i = sum; i > 0; i--)
-	{
-		fsec::encode(ifs.get(), state, bs);
+	ifs.open(filename, std::ios::in | std::ios::binary | std::ios::ate);
+	
 
-		std::streampos pos = ifs.tellg();
-		pos -= 2;
-		if (pos < 0)
-		{
+	fsec::TimeMeasure* t = new fsec::TimeMeasure;
+	t->Start();
+
+	int blockSize = 8192;
+	std::vector<char> buffer;
+	int pos = (int)(ifs.tellg());
+
+	while (pos > 0)
+	{		
+		if (pos - blockSize < 0) {
+			blockSize = pos;
 			pos = 0;
 		}
-		ifs.seekg(pos);
+		else {
+			pos -= blockSize;
+		}
+
+		ifs.seekg(pos, std::ios::beg);
+		buffer.resize(blockSize);
+
+		ifs.read(&buffer[0], blockSize);
+
+		for (int i = blockSize - 1; i >= 0; i--)
+		{
+			fsec::encode((unsigned char)buffer[i], state, bs);
+		}
 	}
+
+	t->End();
+	t->Print();
 
 	int bitcount = bs.flush();
 
@@ -180,7 +199,7 @@ int main(int argc, char** argv)
 	int mode = -1;
 	if (argc == 2) {
 		#if _DEBUG
-			filename = "plrabn12.txt";
+		filename = "enwik8";// "plrabn12.txt";
 		#else
 			filename = argv[1];
 		#endif // DEBUG
