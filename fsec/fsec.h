@@ -1,12 +1,14 @@
 #ifndef FSEC_H
 #define FSEC_H
 
+#define DEBUG_PRINT 0
+
 namespace fsec
 {
 	/// <summary>
 	/// Bit range
 	/// </summary>
-	static int R = 9;
+	static int R = 10;
 	/// <summary>
 	/// Max state (2^R)
 	/// </summary>
@@ -46,11 +48,22 @@ namespace fsec
 		unsigned int buffer;
 		int bitcount;
 
+
+		/* v2 vars */
+		unsigned long long bufferInternal;
+		int bufferSize = 3;
+		int position;
+
 		void out(char* filename) {
 			buffer = 0;
 			bitcount = 0;
-			//file.open(filename, std::ios::in | std::ios::out | std::ios::trunc);
-			file.open(filename, std::ios::in | std::ios::out | std::ios::binary | std::ios::trunc);
+			file.open(filename, std::ios::out | std::ios::binary | std::ios::trunc);
+		}
+
+		void out2(char* filename) {
+			buffer = 0;
+			bitcount = 0;
+			file.open(filename, std::ios::out | std::ios::binary | std::ios::trunc);
 		}
 
 		void write(unsigned int val, int nb)
@@ -62,7 +75,30 @@ namespace fsec
 			{
 				unsigned char tmp;
 				tmp = (unsigned char)(buffer >> (bitcount - 8));
-				//printf_s("write %d\n ", tmp);
+
+				#if DEBUG_PRINT
+				printf_s("write %d\n", tmp);
+				#endif // DEBUG_PRINT
+				
+				file.put(tmp);
+				bitcount -= 8;
+			}
+		}
+
+		void write2(unsigned int val, int nb)
+		{
+			buffer <<= nb;
+			buffer |= val;
+			bitcount += nb;
+			while (bitcount > 7)
+			{
+				unsigned char tmp;
+				tmp = (unsigned char)(buffer >> (bitcount - 8));
+
+#if DEBUG_PRINT
+				printf_s("write %d\n", tmp);
+#endif // DEBUG_PRINT
+
 				file.put(tmp);
 				bitcount -= 8;
 			}
@@ -77,11 +113,8 @@ namespace fsec
 			for (int i = 0; i < fsec::L; i++)
 			{
 				const char* c1 = reinterpret_cast<const char *>(&(decoding_table[i].symbol));
-				auto s1 = sizeof((decoding_table[i].symbol));
 				const char* c2 = reinterpret_cast<const char *>(&(decoding_table[i].nb_bits));
-				auto s2 = sizeof((decoding_table[i].nb_bits));
 				const char* c3 = reinterpret_cast<const char *>(&(decoding_table[i].next_state));
-				auto s3 = sizeof((decoding_table[i].next_state));
 
 				_ASSERT(sizeof(c1) == 4);
 				_ASSERT(sizeof(c2) == 4);
@@ -101,13 +134,31 @@ namespace fsec
 			file.put(tmp);
 			file.put(bitchar);
 
-			printf_s("flush %d\n ", tmp);
-			printf_s("bitc %d\n ", bitcount);
+			#if DEBUG_PRINT
+			printf_s("Flush %d\n", tmp);
+			printf_s("Bitcount %d\n", bitcount);
+			#endif // DEBUG_PRINT
 
 			return bitcount;
 		}
 
-		void in2(char* filename, unsigned int &sum, int &state, fsec::decoding_entry* &decoding_table) {
+		int flush2()
+		{
+			unsigned char tmp = (unsigned char)buffer;
+			unsigned char bitchar = (unsigned char)bitcount;
+
+			file.put(tmp);
+			file.put(bitchar);
+
+#if DEBUG_PRINT
+			printf_s("Flush %d\n", tmp);
+			printf_s("Bitcount %d\n", bitcount);
+#endif // DEBUG_PRINT
+
+			return bitcount;
+		}
+
+		void in(char* filename, unsigned int &sum, int &state, fsec::decoding_entry* &decoding_table) {
 			file.open(filename, std::ios::in | std::ios::binary);
 
 			int len;
@@ -118,14 +169,6 @@ namespace fsec
 
 			int offset = 0 - 14 - len * 3 * sizeof(unsigned int);
 			file.seekg(offset, std::ios::end);
-			//file.seekg(0, std::ios::beg);
-
-			//for (int i = 0; i < 209; i++)
-			//{
-			//	unsigned char read;
-			//	file.read((char*)&read, 1);
-			//	printf_s("i: %d - %d\n", i, read);
-			//}
 
 			unsigned char buff = file.get();
 			unsigned char bit = file.get();
@@ -141,12 +184,51 @@ namespace fsec
 			bitcount = bit;
 			buffer = buff;
 
+			#if DEBUG_PRINT
 			printf_s("state %d\n", state);
 			printf_s("sum %d\n", sum);
 			printf_s("start %d\n", buffer);
 			printf_s("bitc %d\n", bitcount);
+			#endif // DEBUG_PRINT
 
 			file.seekg(offset - 1, std::ios::end);
+		}
+
+		void in2(char* filename, unsigned int &sum, int &state, fsec::decoding_entry* &decoding_table) {			
+			file.open(filename, std::ios::in | std::ios::binary);
+
+			int len;
+			file.seekg(-12, std::ios::end);
+			file.read((char*)&state, sizeof(unsigned int));
+			file.read((char*)&sum, sizeof(unsigned int));
+			file.read((char*)&len, sizeof(unsigned int));
+
+			int offset = 0 - 14 - len * 3 * sizeof(unsigned int);
+			file.seekg(offset, std::ios::end);
+
+			unsigned char buff = file.get();
+			unsigned char bit = file.get();
+
+			decoding_table = new fsec::decoding_entry[len];
+			for (int i = 0; i < len; i++)
+			{
+				file.read(reinterpret_cast<char *>(&(decoding_table[i].symbol)), sizeof(unsigned int));
+				file.read(reinterpret_cast<char *>(&(decoding_table[i].nb_bits)), sizeof(unsigned int));
+				file.read(reinterpret_cast<char *>(&(decoding_table[i].next_state)), sizeof(unsigned int));
+			}
+
+			bitcount = bit;
+			bufferInternal = buff;
+
+			#if DEBUG_PRINT
+			printf_s("state %d\n", state);
+			printf_s("sum %d\n", sum);
+			printf_s("start %d\n", bufferInternal);
+			printf_s("bitc %d\n", bitcount);
+			#endif // DEBUG_PRINT
+
+			file.seekg(offset, std::ios::end);
+			position = file.tellg();
 		}
 
 		unsigned int read(int nb_bits)
@@ -154,7 +236,10 @@ namespace fsec
 			while (bitcount < nb_bits)
 			{
 				unsigned char r = file.get();
-				//printf_s("read %d\n", r);
+
+				#if DEBUG_PRINT
+				printf_s("read %d\n", r);
+				#endif // DEBUG_PRINT				
 
 				std::streampos pos = file.tellg();
 				pos -= 2;
@@ -170,8 +255,45 @@ namespace fsec
 
 			unsigned int ret = buffer & ((1 << nb_bits) - 1);
 
-
 			buffer >>= nb_bits;
+			bitcount -= nb_bits;
+
+			return ret;
+		}
+
+		unsigned int read2(int nb_bits)
+		{
+			while (bitcount < nb_bits && position > 0)
+			{
+				if (position < bufferSize) {
+					bufferSize = position;
+					position = 0;
+				}
+				else {
+					position -= bufferSize;
+				}
+				file.seekg(position);
+
+				unsigned int r = 0;
+				file.read(reinterpret_cast<char *>(&r), bufferSize);
+
+				#if DEBUG_PRINT
+				printf_s("read %d\n", r);
+				#endif // DEBUG_PRINT
+
+				int ct = 0;
+				for (int i = bufferSize - 1; i >= 0; i--)
+				{
+					int rotate = bitcount + ct++ * 8;
+					bufferInternal |= (unsigned char)(r >> i * 8) << rotate;
+				}
+				
+				bitcount += 8 * bufferSize;
+			}
+
+			unsigned int ret = bufferInternal & ((1 << nb_bits) - 1);
+
+			bufferInternal >>= nb_bits;
 			bitcount -= nb_bits;
 
 			return ret;
@@ -182,7 +304,6 @@ namespace fsec
 		}
 	};
 
-	int count(int* input, int inputLen, int* &freqs);
 	unsigned long long countf(char* filename, int* &freqs);
 	int* normalize(int* &freqs, unsigned long long true_sum);
 	int* spread(int* symbols);
@@ -190,7 +311,7 @@ namespace fsec
 	symbol_entry* build_symbol_table(int* freqs);
 	int* build_encoding_table(int* normalized);
 
-	int decode(bitstream &input, int &state, decoding_entry* decoding_table);
+	unsigned char decode(bitstream &input, int &state, decoding_entry* decoding_table);
 	void encode(int symbol, int &state, bitstream &output);
 
 	void print_tables();

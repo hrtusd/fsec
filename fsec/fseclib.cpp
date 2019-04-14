@@ -9,13 +9,12 @@ namespace fsec
 
 	unsigned long long countf(char* filename, int* &freqs)
 	{
-		int size = symbol_count;
-		unsigned long long true_sum = 0ULL;
-
-		printf_s("read\n");
-		
+		printf_s("Counting symbol frequencies - ");
 		fsec::TimeMeasure* t = new fsec::TimeMeasure;
 		t->Start();
+
+		int size = symbol_count;
+		unsigned long long true_sum = 0ULL;
 
 		std::fstream ifs;
 		ifs.open(filename, std::ios::in | std::ios::binary | std::ios::ate);
@@ -33,28 +32,15 @@ namespace fsec
 				buffer.resize(blockSize);
 			}
 
-			t->Start();
-
 			ifs.read(reinterpret_cast<char *>(&buffer[0]), blockSize);
-
-			t->End();
-			t->Print();
-
-			t->Start();
 
 			for (int i = 0; i < blockSize; i++)
 			{
 				freqs[buffer[i]]++;
 			}
 
-			t->End();
-			t->Print();
-
 			pos += blockSize;
 		}
-
-		t->End();
-		t->Print();
 
 		ifs.close();		
 
@@ -65,12 +51,20 @@ namespace fsec
 		}
 
 		symbol_count = size;
-		printf_s("alphabet internal %d\n", symbol_count);
+
+		t->End();
+		t->Print();
+
+		printf_s("Alphabet internal %d\n", symbol_count);
 		return true_sum;
 	}
 
 	int* normalize(int* &freqs, unsigned long long true_sum)
 	{
+		printf_s("Normalizing symbol frequencies - ");
+		fsec::TimeMeasure* t = new fsec::TimeMeasure;
+		t->Start();
+
 		int* normalized = new int[symbol_count];
 		int sum = 0;
 
@@ -109,12 +103,19 @@ namespace fsec
 			error -= sign;
 		}
 
+		t->End();
+		t->Print();
+
 		return normalized;
 	}
 
 	// Spread symbols across table
 	int* spread(int* symbols)
 	{
+		printf_s("Spreading symbol occurencies - ");
+		fsec::TimeMeasure* t = new fsec::TimeMeasure;
+		t->Start();
+
 		int* symbol = new int[L];
 
 		int idx = 0;
@@ -129,11 +130,18 @@ namespace fsec
 			}
 		}
 
+		t->End();
+		t->Print();
+
 		return symbol;
 	}
 
 	decoding_entry* build_decoding_table(int* normalized)
 	{
+		printf_s("Building decoding table - ");
+		fsec::TimeMeasure* t = new fsec::TimeMeasure;
+		t->Start();
+
 		decoding_table = new decoding_entry[L];
 
 		symbol_spread = spread(normalized);
@@ -152,11 +160,18 @@ namespace fsec
 			decoding_table[X].nb_bits = (int)(R - floor(log2(x)));
 		}
 
+		t->End();
+		t->Print();
+
 		return decoding_table;
 	}
 
 	symbol_entry* build_symbol_table(int* freqs)
 	{
+		printf_s("Building symbol table - ");
+		fsec::TimeMeasure* t = new fsec::TimeMeasure;
+		t->Start();
+
 		symbol_entry* symbol_table = new symbol_entry[symbol_count];
 
 		for (int i = 0; i < symbol_count; i++)
@@ -174,11 +189,18 @@ namespace fsec
 			symbol_table[i].next = freqs[i];
 		}
 
+		t->End();
+		t->Print();
+
 		return symbol_table;
 	}
 
 	int* build_encoding_table(int* normalized)
 	{
+		printf_s("Building encoding table\n");
+		fsec::TimeMeasure* t = new fsec::TimeMeasure;
+		t->Start();
+
 		encoding_table = new int[L];
 
 		symbol_spread = spread(normalized);
@@ -192,6 +214,9 @@ namespace fsec
 			int next = symbol_table[s].next++;
 			encoding_table[start + next] = x;
 		}
+
+		t->End();
+		t->Print();
 
 		return encoding_table;
 	}
@@ -229,24 +254,25 @@ namespace fsec
 		}
 	}
 
-
-	int decode(bitstream &input, int &state, decoding_entry* decoding_table)
+	unsigned char decode(bitstream &input, int &state, decoding_entry* decoding_table)
 	{
 		decoding_entry de = decoding_table[state - L];
 
 		int nb_bits = de.nb_bits;
 
-		int shift = input.read(nb_bits);
+		int shift = input.read2(nb_bits);
 
 		int new_state = de.next_state;
 		new_state <<= nb_bits;
 		new_state |= shift;
 
-		//printf_s("symbol: %d\t state: %d -> %d\t bits: %d\t nb: %d\n", (int)de.symbol, state, new_state, shift, nb_bits);
+		#if DEBUG_PRINT
+		printf_s("symbol: %d\t state: %d -> %d\t bits: %d\t nb: %d\n", (int)de.symbol, state, new_state, shift, nb_bits);
+		#endif
 
 		state = new_state;
 
-		return de.symbol;
+		return (unsigned char)de.symbol;
 	}
 
 	void encode(int symbol, int &state, bitstream &output)
@@ -254,8 +280,7 @@ namespace fsec
 		int nb_bits = symbol_table[symbol].nb;
 		if (state >= symbol_table[symbol].k) nb_bits++;
 
-		//output.WriteBits(state & ((1 << nbBits) - 1), nbBits);
-		output.write(state & ((1 << nb_bits) - 1), nb_bits);
+		output.write2(state & ((1 << nb_bits) - 1), nb_bits);
 
 		int tmp = state & ((1 << nb_bits) - 1);
 
@@ -263,7 +288,9 @@ namespace fsec
 		int shift = (state >> nb_bits);
 		int new_state = encoding_table[start + shift];
 
-		//printf_s("symbol: %d\t state: %d -> %d\t bits: %d\t nb: %d\n", symbol, state, new_state, tmp, nb_bits);
+		#if DEBUG_PRINT
+		printf_s("symbol: %d\t state: %d -> %d\t bits: %d\t nb: %d\n", symbol, state, new_state, tmp, nb_bits);
+		#endif
 
 		state = new_state;
 	}
