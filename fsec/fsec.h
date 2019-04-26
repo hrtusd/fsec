@@ -6,14 +6,6 @@
 namespace fsec
 {
 	/// <summary>
-	/// Bit range
-	/// </summary>
-	static int R = 10;
-	/// <summary>
-	/// Max state (2^R)
-	/// </summary>
-	static int L = 1 << R;
-	/// <summary>
 	/// Alphabet
 	/// </summary>
 	static int symbol_count = 256;
@@ -51,7 +43,7 @@ namespace fsec
 
 		/* v2 vars */
 		unsigned long long bufferInternal;
-		int bufferSize = 3;
+		int bufferSize = 2;
 		int position;
 
 		void out(char* filename) {
@@ -109,21 +101,21 @@ namespace fsec
 			file.write(reinterpret_cast<const char *>(&val), sizeof(val));
 		}
 
-		void write_decoding_table(fsec::decoding_entry* decoding_table) {
-			for (int i = 0; i < fsec::L; i++)
+		int write_decoding_table(fsec::decoding_entry* decoding_table, int L) {
+            int pos = file.tellg();
+
+			for (int i = 0; i < L; i++)
 			{
 				const char* c1 = reinterpret_cast<const char *>(&(decoding_table[i].symbol));
 				const char* c2 = reinterpret_cast<const char *>(&(decoding_table[i].nb_bits));
 				const char* c3 = reinterpret_cast<const char *>(&(decoding_table[i].next_state));
 
-				_ASSERT(sizeof(c1) == 4);
-				_ASSERT(sizeof(c2) == 4);
-				_ASSERT(sizeof(c3) == 4);
-
 				file.write(reinterpret_cast<const char *>(&(decoding_table[i].symbol)), sizeof((decoding_table[i].symbol)));
 				file.write(reinterpret_cast<const char *>(&(decoding_table[i].nb_bits)), sizeof((decoding_table[i].nb_bits)));
 				file.write(reinterpret_cast<const char *>(&(decoding_table[i].next_state)), sizeof((decoding_table[i].next_state)));
 			}
+
+            return pos;
 		}
 
 		int flush()
@@ -305,16 +297,17 @@ namespace fsec
 	};
 
 	unsigned long long countf(char* filename, int* &freqs);
-	int* normalize(int* &freqs, unsigned long long true_sum);
-	int* spread(int* symbols);
-	decoding_entry* build_decoding_table(int* normalized);
-	symbol_entry* build_symbol_table(int* freqs);
-	int* build_encoding_table(int* normalized);
+	int* normalize(int* &freqs, unsigned long long true_sum, int L);
+    double entropy(int* &freqs, unsigned long long true_sum);
+	int* spread(int* symbols, int L);
+	decoding_entry* build_decoding_table(int* normalized, int L, int R);
+	symbol_entry* build_symbol_table(int* freqs, int L);
+	int* build_encoding_table(int* normalized, int L);
 
-	unsigned char decode(bitstream &input, int &state, decoding_entry* decoding_table);
+	unsigned char decode(bitstream &input, int &state, decoding_entry* decoding_table, int L);
 	void encode(int symbol, int &state, bitstream &output);
 
-	void print_tables();
+	void print_tables(int L);
 }
 
 #endif //FSEC_H

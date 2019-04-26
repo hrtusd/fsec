@@ -1,6 +1,6 @@
 #include "pch.h"
 
-void fsec_encode(std::string filename) {
+void fsec_encode(std::string filename, int L, int R) {
 	int* freqs = new int[fsec::symbol_count];
 	for (int i = 0; i < fsec::symbol_count; i++)
 	{
@@ -18,8 +18,11 @@ void fsec_encode(std::string filename) {
 	}
 	#endif
 	
+
+    double entropy = fsec::entropy(freqs, sum);
+    printf_s("Entropy: %f\n", entropy);
 	
-	int* norm = fsec::normalize(freqs, sum);
+	int* norm = fsec::normalize(freqs, sum, L);
 	
 	#if DEBUG_PRINT
 	printf_s("Normalized frequencies\n");
@@ -31,14 +34,14 @@ void fsec_encode(std::string filename) {
 
 	//int* spread = fsec::spread(norm);
 
-	int* encoding_table = fsec::build_encoding_table(norm);
-	fsec::decoding_entry* decoding_table = fsec::build_decoding_table(norm);
+	int* encoding_table = fsec::build_encoding_table(norm, L);
+	fsec::decoding_entry* decoding_table = fsec::build_decoding_table(norm, L, R);
 
 	#if DEBUG_PRINT
 	fsec::print_tables();
 	#endif
 	
-	int state = fsec::L;
+	int state = L;
 
 	fsec::bitstream bs;
 	std::string f = std::string(filename) + ".anst";
@@ -75,10 +78,15 @@ void fsec_encode(std::string filename) {
 
 	int bitcount = bs.flush();
 
-	bs.write_decoding_table(decoding_table);
+	int bytesWritten = bs.write_decoding_table(decoding_table, L);
+
+    printf_s("Bytes source: %d\n", sum);
+    printf_s("Bytes written: %d\n", bytesWritten);
+    printf_s("Bytes min: %f\n", entropy * sum / 8);
+    printf_s("Ratio: %f\n", sum / (double)bytesWritten);
 	bs.write(state);
 	bs.write(sum);
-	bs.write(fsec::L);
+	bs.write(L);
 
 	bs.end();
 
@@ -88,31 +96,34 @@ void fsec_encode(std::string filename) {
 	#endif
 }
 
-void fsec_decode(std::string filename) {
+void fsec_decode(std::string filename, int L) {
 	int state;
 	unsigned int sum;
 
 	fsec::decoding_entry* decoding_table;
 
-	// temp
-	filename = filename + ".anst";
+    #if _DEBUG
+    filename = filename + ".anst";
+    #endif // _DEBUG
+
 
 	printf_s("Rading state and decoding table - ");
-	fsec::TimeMeasure* t = new fsec::TimeMeasure;
-	t->Start();
+    fsec::TimePoint start = fsec::timer_timepoint();
 
 	fsec::bitstream bs;
 	bs.in2(&filename[0u], sum, state, decoding_table);
 
-	t->End();
-	t->Print();
+    fsec::TimePoint end = fsec::timer_timepoint();
+    fsec::timer_print(start, end);
 
 	std::ofstream ofs;
-	ofs.open(filename + "decode.txt", std::ios::binary | std::ios::trunc);
+    // Double name of original file
+    std::string outputFileName = filename.substr(0, filename.length() - 5) + filename.substr(0, filename.length() - 5);
+	ofs.open(outputFileName, std::ios::binary | std::ios::trunc);
 
 	for (int i = 0; i < sum; i++)
 	{
-		unsigned char symbol = fsec::decode(bs, state, decoding_table);
+		unsigned char symbol = fsec::decode(bs, state, decoding_table, L);
 		ofs.write(reinterpret_cast<char *>(&symbol), 1);
 	}
 }
@@ -125,42 +136,49 @@ int main(int argc, char** argv)
 
 	const char* filename;
 	int mode = -1;
-	if (argc == 2) {
-		#if _DEBUG
-		filename = "plrabn12.txt";// "plrabn12.txt";
-		#else
-			filename = argv[1];
-		#endif // DEBUG
 
-		printf_s("File: %s\n", filename);
-		if (std::string(filename).find(".anst") != std::string::npos) {
-			mode = 0; // Decoding
-		}
-		else {
-			mode = 1; // Encoding
-		}
-	}
-	else
-	{
-		printf_s("No file input.\n");
-		return 0;
-	}
+    int R = 10;
+    int L = 1 << R;
 
-	fsec::TimeMeasure* t = new fsec::TimeMeasure;
+    switch (argc)
+    {
+    case 3:
+        R = std::atoi(argv[2]);
+        L = 1 << R;
+    case 2:
+        #if _DEBUG
+        filename = "plrabn12.txt";// "plrabn12.txt";
+        #else
+        filename = argv[1];
+        #endif // DEBUG
+
+        printf_s("File: %s\n", filename);
+        if (std::string(filename).find(".anst") != std::string::npos) {
+            mode = 0; // Decoding
+        }
+        else {
+            mode = 1; // Encoding
+        }
+        break;
+    default:
+        printf_s("No file input.\n");
+        return 0;
+        break;
+    }
 
 	#if _DEBUG
 	
-	t->Start();
+    fsec::TimePoint startEnc = fsec::timer_timepoint();
 	printf_s("\nEncoding ...\n");
 	fsec_encode(filename);
-	t->End();
-	t->Print();
+    fsec::TimePoint endEnc = fsec::timer_timepoint();
+    fsec::timer_print(startEnc, endEnc);
 
-	t->Start();
+    fsec::TimePoint startDec = fsec::timer_timepoint();
 	printf_s("\nDecoding ...\n");
 	fsec_decode(filename);
-	t->End();
-	t->Print();
+    fsec::TimePoint endDec = fsec::timer_timepoint();
+    fsec::timer_print(startDec, endDec);
 	
 
 	printf_s("\nDone ...\n");
@@ -168,40 +186,27 @@ int main(int argc, char** argv)
 	return 0;
 	#endif // DEBUG
 
+    if (mode != 0 && mode != 1) return 0;
+
+    fsec::TimePoint startR = fsec::timer_timepoint();
+
 	switch (mode)
 	{
-	case -1:
-		return 0;
-		break;
 	case 0:
 		printf_s("\nDecoding ...\n");
-
-		t->Start();
-
-		fsec_decode(filename);
-
-		t->End();
-		t->Print();
-
-		printf_s("\nDone ...\n");
+		fsec_decode(filename, L);
 		break;
 	case 1:
 		printf_s("\nEncoding ...\n");
-
-		t->Start();
-
-		fsec_encode(filename);
-
-		t->End();
-		t->Print();
-
-		printf_s("\nDone ...\n");
-		break;
-	default:
+		fsec_encode(filename, L, R);
 		break;
 	}
 
-	delete t;
+    fsec::TimePoint endR = fsec::timer_timepoint();
+    fsec::timer_print(startR, endR);
+    printf_s("\nDone ...\n");
+
+
 	return 0;
 }
 

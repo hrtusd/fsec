@@ -10,8 +10,8 @@ namespace fsec
 	unsigned long long countf(char* filename, int* &freqs)
 	{
 		printf_s("Counting symbol frequencies - ");
-		fsec::TimeMeasure* t = new fsec::TimeMeasure;
-		t->Start();
+		
+        TimePoint start = timer_timepoint();
 
 		int size = symbol_count;
 		unsigned long long true_sum = 0ULL;
@@ -52,18 +52,17 @@ namespace fsec
 
 		symbol_count = size;
 
-		t->End();
-		t->Print();
+        TimePoint end = timer_timepoint();
+        timer_print(start, end);
 
 		printf_s("Alphabet internal %d\n", symbol_count);
 		return true_sum;
 	}
 
-	int* normalize(int* &freqs, unsigned long long true_sum)
+	int* normalize(int* &freqs, unsigned long long true_sum, int L)
 	{
 		printf_s("Normalizing symbol frequencies - ");
-		fsec::TimeMeasure* t = new fsec::TimeMeasure;
-		t->Start();
+        TimePoint start = timer_timepoint();
 
 		int* normalized = new int[symbol_count];
 		int sum = 0;
@@ -103,18 +102,39 @@ namespace fsec
 			error -= sign;
 		}
 
-		t->End();
-		t->Print();
+        TimePoint end = timer_timepoint();
+        timer_print(start, end);
 
 		return normalized;
 	}
 
+    double entropy(int* &freqs, unsigned long long true_sum)
+    {
+        printf_s("Calculating entropy - ");
+        TimePoint start = timer_timepoint();
+
+        double e = 0.0;
+
+        for (int i = 0; i < symbol_count; i++)
+        {
+            double prob = (double)freqs[i] / true_sum;
+            if (prob == 0) continue;
+            double log = log2(prob);
+            double mul = prob * log;
+            e += mul;
+        }
+
+        TimePoint end = timer_timepoint();
+        timer_print(start, end);
+
+        return -e;
+    }
+
 	// Spread symbols across table
-	int* spread(int* symbols)
+	int* spread(int* symbols, int L)
 	{
 		printf_s("Spreading symbol occurencies - ");
-		fsec::TimeMeasure* t = new fsec::TimeMeasure;
-		t->Start();
+        TimePoint start = timer_timepoint();
 
 		int* symbol = new int[L];
 
@@ -130,21 +150,20 @@ namespace fsec
 			}
 		}
 
-		t->End();
-		t->Print();
+		TimePoint end = timer_timepoint();
+        timer_print(start, end);
 
 		return symbol;
 	}
 
-	decoding_entry* build_decoding_table(int* normalized)
+	decoding_entry* build_decoding_table(int* normalized, int L, int R)
 	{
 		printf_s("Building decoding table - ");
-		fsec::TimeMeasure* t = new fsec::TimeMeasure;
-		t->Start();
+        TimePoint start = timer_timepoint();
 
 		decoding_table = new decoding_entry[L];
 
-		symbol_spread = spread(normalized);
+		symbol_spread = spread(normalized, L);
 
 		int* next = new int[symbol_count];
 		for (int i = 0; i < symbol_count; i++)
@@ -160,17 +179,16 @@ namespace fsec
 			decoding_table[X].nb_bits = (int)(R - floor(log2(x)));
 		}
 
-		t->End();
-		t->Print();
+		TimePoint end = timer_timepoint();
+        timer_print(start, end);
 
 		return decoding_table;
 	}
 
-	symbol_entry* build_symbol_table(int* freqs)
+	symbol_entry* build_symbol_table(int* freqs, int L)
 	{
 		printf_s("Building symbol table - ");
-		fsec::TimeMeasure* t = new fsec::TimeMeasure;
-		t->Start();
+        TimePoint start = timer_timepoint();
 
 		symbol_entry* symbol_table = new symbol_entry[symbol_count];
 
@@ -189,23 +207,22 @@ namespace fsec
 			symbol_table[i].next = freqs[i];
 		}
 
-		t->End();
-		t->Print();
+        TimePoint end = timer_timepoint();
+        timer_print(start, end);
 
 		return symbol_table;
 	}
 
-	int* build_encoding_table(int* normalized)
+	int* build_encoding_table(int* normalized, int L)
 	{
 		printf_s("Building encoding table\n");
-		fsec::TimeMeasure* t = new fsec::TimeMeasure;
-		t->Start();
+        TimePoint start = timer_timepoint();
 
 		encoding_table = new int[L];
 
-		symbol_spread = spread(normalized);
+		symbol_spread = spread(normalized, L);
 
-		symbol_table = build_symbol_table(normalized);
+		symbol_table = build_symbol_table(normalized, L);
 
 		for (int x = L; x < 2 * L; x++)
 		{
@@ -215,13 +232,13 @@ namespace fsec
 			encoding_table[start + next] = x;
 		}
 
-		t->End();
-		t->Print();
+        TimePoint end = timer_timepoint();
+        timer_print(start, end);
 
 		return encoding_table;
 	}
 
-	void print_tables()
+	void print_tables(int L)
 	{
 		printf_s("Alphabet: %d\n", symbol_count);
 		printf_s("L: %d\n", L);
@@ -254,7 +271,7 @@ namespace fsec
 		}
 	}
 
-	unsigned char decode(bitstream &input, int &state, decoding_entry* decoding_table)
+	unsigned char decode(bitstream &input, int &state, decoding_entry* decoding_table, int L)
 	{
 		decoding_entry de = decoding_table[state - L];
 
