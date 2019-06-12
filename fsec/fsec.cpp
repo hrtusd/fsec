@@ -18,7 +18,6 @@ void fsec_encode(std::string filename, int L, int R) {
 	}
 	#endif
 	
-
     double entropy = fsec::entropy(freqs, sum);
     printf_s("Entropy: %f\n", entropy);
 	
@@ -38,20 +37,20 @@ void fsec_encode(std::string filename, int L, int R) {
 	fsec::decoding_entry* decoding_table = fsec::build_decoding_table(norm, L, R);
 
 	#if DEBUG_PRINT
-	fsec::print_tables();
+	fsec::print_tables(L);
 	#endif
 	
 	int state = L;
 
 	fsec::bitstream bs;
-	std::string f = std::string(filename) + ".anst";
+	std::string f = std::string(filename) + ".fsec";
 	bs.out2(&f[0u]);
 
 
 	std::ifstream ifs;
 	ifs.open(filename, std::ios::binary | std::ios::ate);
 
-	int blockSize = 1 << 14;
+	int blockSize = 1 << 12;
 	std::vector<unsigned char> buffer;
 	int pos = (int)(ifs.tellg());
 
@@ -103,11 +102,10 @@ void fsec_decode(std::string filename, int L) {
 	fsec::decoding_entry* decoding_table;
 
     #if _DEBUG
-    filename = filename + ".anst";
+    filename = filename + ".fsec";
     #endif // _DEBUG
 
-
-	printf_s("Rading state and decoding table - ");
+	printf_s("Reading state and decoding table - ");
     fsec::TimePoint start = fsec::timer_timepoint();
 
 	fsec::bitstream bs;
@@ -121,11 +119,24 @@ void fsec_decode(std::string filename, int L) {
     std::string outputFileName = filename.substr(0, filename.length() - 5) + filename.substr(0, filename.length() - 5);
 	ofs.open(outputFileName, std::ios::binary | std::ios::trunc);
 
+    int blockSize = 1 << 12;
+    std::vector<unsigned char> buffer;
+    int cnt = 0;
+    buffer.resize(blockSize);
+
 	for (int i = 0; i < sum; i++)
 	{
-		unsigned char symbol = fsec::decode(bs, state, decoding_table, L);
-		ofs.write(reinterpret_cast<char *>(&symbol), 1);
+        unsigned char symbol = fsec::decode(bs, state, decoding_table, L);
+        buffer[cnt++] = symbol;
+
+        if (cnt == blockSize) {
+            ofs.write(reinterpret_cast<char*>(&buffer[0]), cnt);
+            cnt = 0;
+        }
 	}
+    
+    ofs.write(reinterpret_cast<char*>(&buffer[0]), cnt);
+    ofs.close();
 }
 
 int main(int argc, char** argv)
@@ -137,7 +148,7 @@ int main(int argc, char** argv)
 	const char* filename;
 	int mode = -1;
 
-    int R = 10;
+    int R = 12;
     int L = 1 << R;
 
     switch (argc)
@@ -153,7 +164,7 @@ int main(int argc, char** argv)
         #endif // DEBUG
 
         printf_s("File: %s\n", filename);
-        if (std::string(filename).find(".anst") != std::string::npos) {
+        if (std::string(filename).find(".fsec") != std::string::npos) {
             mode = 0; // Decoding
         }
         else {
@@ -170,16 +181,15 @@ int main(int argc, char** argv)
 	
     fsec::TimePoint startEnc = fsec::timer_timepoint();
 	printf_s("\nEncoding ...\n");
-	fsec_encode(filename);
+	fsec_encode(filename, L, R);
     fsec::TimePoint endEnc = fsec::timer_timepoint();
     fsec::timer_print(startEnc, endEnc);
 
     fsec::TimePoint startDec = fsec::timer_timepoint();
 	printf_s("\nDecoding ...\n");
-	fsec_decode(filename);
+	fsec_decode(filename, L);
     fsec::TimePoint endDec = fsec::timer_timepoint();
     fsec::timer_print(startDec, endDec);
-	
 
 	printf_s("\nDone ...\n");
 
@@ -205,7 +215,6 @@ int main(int argc, char** argv)
     fsec::TimePoint endR = fsec::timer_timepoint();
     fsec::timer_print(startR, endR);
     printf_s("\nDone ...\n");
-
 
 	return 0;
 }

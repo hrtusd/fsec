@@ -43,7 +43,9 @@ namespace fsec
 
 		/* v2 vars */
 		unsigned long long bufferInternal;
-		int bufferSize = 2;
+        std::vector<unsigned char> bufferVec;
+		int bufferSize = 1 << 12;
+        int bufferRead;
 		int position;
 
 		void out(char* filename) {
@@ -211,6 +213,8 @@ namespace fsec
 
 			bitcount = bit;
 			bufferInternal = buff;
+            bufferRead = 0;
+            bufferVec.resize(bufferSize);
 
 			#if DEBUG_PRINT
 			printf_s("state %d\n", state);
@@ -223,7 +227,7 @@ namespace fsec
 			position = file.tellg();
 		}
 
-		unsigned int read(int nb_bits)
+        unsigned int read(int nb_bits)
 		{
 			while (bitcount < nb_bits)
 			{
@@ -253,34 +257,42 @@ namespace fsec
 			return ret;
 		}
 
-		unsigned int read2(int nb_bits)
-		{
-			while (bitcount < nb_bits && position > 0)
-			{
-				if (position < bufferSize) {
-					bufferSize = position;
-					position = 0;
-				}
-				else {
-					position -= bufferSize;
-				}
-				file.seekg(position);
+        unsigned int read2(int nb_bits)
+        {
+            while (bitcount < nb_bits/* && position > 0*/)
+            {
+                //v2
+                if (bufferRead == 0) {
+                    if (position < bufferSize) {
+                        bufferSize = position;
+                        position = 0;
+                    }
+                    else {
+                        position -= bufferSize;
+                    }
+                    file.seekg(position, std::ios::beg);
 
-				unsigned int r = 0;
-				file.read(reinterpret_cast<char *>(&r), bufferSize);
 
-				#if DEBUG_PRINT
-				printf_s("read %d\n", r);
-				#endif // DEBUG_PRINT
+                    bufferVec.resize(bufferSize);
+                    file.read(reinterpret_cast<char *>(&bufferVec[0]), bufferSize);
+                    bufferRead = bufferSize;
+                }
 
-				int ct = 0;
-				for (int i = bufferSize - 1; i >= 0; i--)
-				{
-					int rotate = bitcount + ct++ * 8;
-					bufferInternal |= (unsigned char)(r >> i * 8) << rotate;
-				}
-				
-				bitcount += 8 * bufferSize;
+                int refreshRate = 2;
+                int refreshed = 0;
+                while (refreshed < refreshRate && bufferRead > 0)
+                {
+                    int rotate = bitcount + refreshed++ * 8;
+                    unsigned char newByte = bufferVec[--bufferRead];
+
+                    bufferInternal |= newByte << rotate;
+
+                    #if DEBUG_PRINT
+                    printf_s("read %d\n", newByte);
+                    #endif // DEBUG_PRINT
+                }
+
+                bitcount += 8 * refreshed;
 			}
 
 			unsigned int ret = bufferInternal & ((1 << nb_bits) - 1);
