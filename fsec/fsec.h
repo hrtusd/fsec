@@ -320,6 +320,9 @@ namespace fsec
 	void encode(int symbol, int &state, bitstream &output);
 
 	void print_tables(int L);
+
+    void fsec_encode(std::string filename, int L, int R);
+    void fsec_decode(std::string filename, int L);
 }
 
 #endif //FSEC_H
