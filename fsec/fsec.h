@@ -2,6 +2,7 @@
 #define FSEC_H
 
 #define DEBUG_PRINT 0
+#define INFO_PRINT 1
 
 namespace fsec
 {

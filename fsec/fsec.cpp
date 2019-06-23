@@ -11,9 +11,12 @@ int main(int argc, char** argv)
 
     int R = 12;
     int L = 1 << R;
+	int reps = 1;
 
     switch (argc)
     {
+	case 4:
+		reps = std::atoi(argv[3]);
     case 3:
         R = std::atoi(argv[2]);
         L = 1 << R;
@@ -42,13 +45,13 @@ int main(int argc, char** argv)
 	
     fsec::TimePoint startEnc = fsec::timer_timepoint();
 	printf_s("\nEncoding ...\n");
-	fsec_encode(filename, L, R);
+	fsec::fsec_encode(filename, L, R);
     fsec::TimePoint endEnc = fsec::timer_timepoint();
     fsec::timer_print(startEnc, endEnc);
 
     fsec::TimePoint startDec = fsec::timer_timepoint();
 	printf_s("\nDecoding ...\n");
-	fsec_decode(filename, L);
+	fsec::fsec_decode(filename, L);
     fsec::TimePoint endDec = fsec::timer_timepoint();
     fsec::timer_print(startDec, endDec);
 
@@ -61,18 +64,22 @@ int main(int argc, char** argv)
 
     fsec::TimePoint startR = fsec::timer_timepoint();
 
-	switch (mode)
+	for (int i = 0; i < reps; i++)
 	{
-	case 0:
-		printf_s("\nDecoding ...\n");
-		fsec::fsec_decode(filename, L);
-		break;
-	case 1:
-		printf_s("\nEncoding ...\n");
-		fsec::fsec_encode(filename, L, R);
-		break;
+		switch (mode)
+		{
+		case 0:
+			printf_s("\nDecoding ...\n");
+			fsec::fsec_decode(filename, L);
+			break;
+		case 1:
+			printf_s("\nEncoding ...\n");
+			fsec::fsec_encode(filename, L, R);
+			break;
+		}
 	}
 
+	printf_s("Total time - ");
     fsec::TimePoint endR = fsec::timer_timepoint();
     fsec::timer_print(startR, endR);
     printf_s("\nDone ...\n");

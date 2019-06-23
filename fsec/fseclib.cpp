@@ -9,9 +9,10 @@ namespace fsec
 
 	unsigned long long countf(char* filename, int* &freqs)
 	{
-		printf_s("Counting symbol frequencies - ");
-		
-        TimePoint start = timer_timepoint();
+		#if INFO_PRINT
+		printf_s("Counting symbol frequencies - start\n");
+		TimePoint start = timer_timepoint();
+		#endif
 
 		int size = symbol_count;
 		unsigned long long true_sum = 0ULL;
@@ -52,17 +53,22 @@ namespace fsec
 
 		symbol_count = size;
 
+		#if INFO_PRINT
+		printf_s("Counting symbol frequencies - ");
         TimePoint end = timer_timepoint();
         timer_print(start, end);
 
 		printf_s("Alphabet internal %d\n", symbol_count);
+#endif
 		return true_sum;
 	}
 
 	int* normalize(int* &freqs, unsigned long long true_sum, int L)
 	{
-		printf_s("Normalizing symbol frequencies - ");
+#if INFO_PRINT
+		printf_s("Normalizing symbol frequencies - start\n");
         TimePoint start = timer_timepoint();
+#endif
 
 		int* normalized = new int[symbol_count];
 		int sum = 0;
@@ -102,16 +108,21 @@ namespace fsec
 			error -= sign;
 		}
 
+#if INFO_PRINT
+		printf_s("Normalizing symbol frequencies - ");
         TimePoint end = timer_timepoint();
         timer_print(start, end);
+#endif
 
 		return normalized;
 	}
 
     double entropy(int* &freqs, unsigned long long true_sum)
     {
-        printf_s("Calculating entropy - ");
+#if INFO_PRINT
+        printf_s("Calculating entropy - start\n");
         TimePoint start = timer_timepoint();
+#endif
 
         double e = 0.0;
 
@@ -124,8 +135,11 @@ namespace fsec
             e += mul;
         }
 
+#if INFO_PRINT
+		printf_s("Calculating entropy - ");
         TimePoint end = timer_timepoint();
         timer_print(start, end);
+#endif
 
         return -e;
     }
@@ -133,33 +147,42 @@ namespace fsec
 	// Spread symbols across table
 	int* spread(int* symbols, int L)
 	{
-		printf_s("Spreading symbol occurencies - ");
+#if INFO_PRINT
+		printf_s("Spreading symbol occurencies - start\n");
         TimePoint start = timer_timepoint();
+#endif
 
 		int* symbol = new int[L];
 
 		int idx = 0;
 		int step = (int)(5.0 / 8 * L + 3);
 
+		//int cnt = 0;
 		for (int i = 0; i < symbol_count; i++)
 		{
 			for (int j = 0; j < symbols[i]; j++)
 			{
 				symbol[idx] = i;
 				idx = (idx + step) % L;
+				//symbol[cnt++] = i;
 			}
 		}
 
+#if INFO_PRINT
+		printf_s("Spreading symbol occurencies - ");
 		TimePoint end = timer_timepoint();
         timer_print(start, end);
+#endif
 
 		return symbol;
 	}
 
 	decoding_entry* build_decoding_table(int* normalized, int L, int R)
 	{
-		printf_s("Building decoding table - ");
+#if INFO_PRINT
+		printf_s("Building decoding table - start\n");
         TimePoint start = timer_timepoint();
+#endif
 
 		decoding_table = new decoding_entry[L];
 
@@ -179,16 +202,21 @@ namespace fsec
 			decoding_table[X].nb_bits = (int)(R - floor(log2(x)));
 		}
 
+#if INFO_PRINT
+		printf_s("Building decoding table - ");
 		TimePoint end = timer_timepoint();
         timer_print(start, end);
+#endif
 
 		return decoding_table;
 	}
 
 	symbol_entry* build_symbol_table(int* freqs, int L)
 	{
-		printf_s("Building symbol table - ");
+#if INFO_PRINT
+		printf_s("Building symbol table - start\n");
         TimePoint start = timer_timepoint();
+#endif
 
 		symbol_entry* symbol_table = new symbol_entry[symbol_count];
 
@@ -207,16 +235,21 @@ namespace fsec
 			symbol_table[i].next = freqs[i];
 		}
 
+#if INFO_PRINT
+		printf_s("Building symbol table - ");
         TimePoint end = timer_timepoint();
         timer_print(start, end);
+#endif
 
 		return symbol_table;
 	}
 
 	int* build_encoding_table(int* normalized, int L)
 	{
-		printf_s("Building encoding table\n");
+#if INFO_PRINT
+		printf_s("Building encoding table - start\n");
         TimePoint start = timer_timepoint();
+#endif
 
 		encoding_table = new int[L];
 
@@ -232,8 +265,11 @@ namespace fsec
 			encoding_table[start + next] = x;
 		}
 
+#if INFO_PRINT
+		printf_s("Building encoding table - ");
         TimePoint end = timer_timepoint();
         timer_print(start, end);
+#endif
 
 		return encoding_table;
 	}
@@ -297,8 +333,6 @@ namespace fsec
 		int nb_bits = symbol_table[symbol].nb;
 		if (state >= symbol_table[symbol].k) nb_bits++;
 
-		output.write2(state & ((1 << nb_bits) - 1), nb_bits);
-
 		int tmp = state & ((1 << nb_bits) - 1);
 
 		int start = symbol_table[symbol].start;
@@ -308,6 +342,8 @@ namespace fsec
 		#if DEBUG_PRINT
 		printf_s("symbol: %d\t state: %d -> %d\t bits: %d\t nb: %d\n", symbol, state, new_state, tmp, nb_bits);
 		#endif
+
+		output.write2(state & ((1 << nb_bits) - 1), nb_bits);
 
 		state = new_state;
 	}
@@ -331,7 +367,10 @@ namespace fsec
 #endif
 
         double entropy = fsec::entropy(freqs, sum);
+
+#if INFO_PRINT
         printf_s("Entropy: %f\n", entropy);
+#endif
 
         int* norm = fsec::normalize(freqs, sum, L);
 
@@ -391,10 +430,12 @@ namespace fsec
 
         int bytesWritten = bs.write_decoding_table(decoding_table, L);
 
+#if INFO_PRINT
         printf_s("Bytes source: %d\n", sum);
         printf_s("Bytes written: %d\n", bytesWritten);
         printf_s("Bytes min: %f\n", entropy * sum / 8);
-        printf_s("Ratio: %f\n", sum / (double)bytesWritten);
+        printf_s("Ratio: %f\n", (double)bytesWritten / sum);
+#endif
         bs.write(state);
         bs.write(sum);
         bs.write(L);
@@ -417,24 +458,33 @@ namespace fsec
         filename = filename + ".fsec";
 #endif // _DEBUG
 
-        printf_s("Reading state and decoding table - ");
+#if INFO_PRINT
+        printf_s("Reading state and decoding table - start\n");
         fsec::TimePoint start = fsec::timer_timepoint();
+#endif
 
         fsec::bitstream bs;
         bs.in2(&filename[0u], sum, state, decoding_table);
 
+#if INFO_PRINT
+		printf_s("Reading state and decoding table - ");
         fsec::TimePoint end = fsec::timer_timepoint();
         fsec::timer_print(start, end);
+#endif
 
         std::ofstream ofs;
-        // Double name of original file
-        std::string outputFileName = filename.substr(0, filename.length() - 5) + filename.substr(0, filename.length() - 5);
+        std::string outputFileName = filename + ".decoded";
         ofs.open(outputFileName, std::ios::binary | std::ios::trunc);
 
         int blockSize = 1 << 12;
         std::vector<unsigned char> buffer;
         int cnt = 0;
         buffer.resize(blockSize);
+
+#if INFO_PRINT
+		printf_s("Decoding - start\n");
+		fsec::TimePoint start2 = fsec::timer_timepoint();
+#endif
 
         for (int i = 0; i < sum; i++)
         {
@@ -449,5 +499,13 @@ namespace fsec
 
         ofs.write(reinterpret_cast<char*>(&buffer[0]), cnt);
         ofs.close();
+
+#if INFO_PRINT
+		printf_s("Decoding - ");
+		fsec::TimePoint end2 = fsec::timer_timepoint();
+		fsec::timer_print(start2, end2);
+
+		printf_s("File decoded to: %s\n", &outputFileName[0]);
+#endif
     }
 }
