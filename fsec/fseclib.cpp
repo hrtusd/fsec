@@ -401,7 +401,7 @@ namespace fsec
         std::ifstream ifs;
         ifs.open(filename, std::ios::binary | std::ios::ate);
 
-        int blockSize = 1 << 12;
+        int blockSize = FILE_BLOCK_SIZE;
         std::vector<unsigned char> buffer;
         int pos = (int)(ifs.tellg());
 
@@ -476,7 +476,7 @@ namespace fsec
         std::string outputFileName = filename + ".decoded";
         ofs.open(outputFileName, std::ios::binary | std::ios::trunc);
 
-        int blockSize = 1 << 12;
+        int blockSize = FILE_BLOCK_SIZE;
         std::vector<unsigned char> buffer;
         int cnt = 0;
         buffer.resize(blockSize);

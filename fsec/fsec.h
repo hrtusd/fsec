@@ -2,7 +2,8 @@
 #define FSEC_H
 
 #define DEBUG_PRINT 0
-#define INFO_PRINT 1
+#define INFO_PRINT 0
+#define FILE_BLOCK_SIZE 1 << 12
 
 namespace fsec
 {
@@ -45,7 +46,7 @@ namespace fsec
 		/* v2 vars */
 		unsigned long long bufferInternal;
         std::vector<unsigned char> bufferVec;
-		int bufferSize = 1 << 12;
+		int bufferSize = FILE_BLOCK_SIZE;
         int bufferRead;
 		int position;
 
